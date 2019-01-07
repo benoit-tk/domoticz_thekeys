@@ -10,6 +10,7 @@ import base64
 import hmac
 import urllib.parse
 import urllib.request
+import traceback
 
 import Domoticz
 
@@ -74,7 +75,7 @@ class Gateway:
             res = r.read()
             Domoticz.Log("res: %s"%res)
             #logging.debug(r.text)
-            resp = json.loads(res)
+            resp = json.loads(res.decode('utf-8'))
             logging.debug("result: %s. Code: %d"%(resp, resp["code"]))
             logging.debug("duration: %f"%(time.time() - start))
             return resp
@@ -85,7 +86,11 @@ class Gateway:
         url = "http://%s/lockers"%self.host
         req = urllib.request.Request(url)
         r = urllib.request.urlopen(req)
-        resp = json.loads(r.read())
+        try:
+            resp = json.loads(r.read().decode('utf-8'))
+        except:
+            Domoticz.Log("Fail to parse response: ");
+            traceback.print_exc()
         #logging.debug("Found %d lockers:"%len(resp["devices"]))
         #for d in resp["devices"]:
         #    logging.debug("Found locker %s. RSSI: %d, battery: %d"%(d["identifier"], d["rssi"], d["battery"]))
@@ -93,19 +98,19 @@ class Gateway:
 
     def status(self):
         r = requests.get("http://%s/status"%self.host)
-        resp = json.loads(r.text)
+        resp = json.loads(r.text.decode('utf-8'))
         logging.debug("Version: %s\nCurrentAction: %s\n"%(resp["version"], resp["current_status"]))
 
     def synchronize(self):
         r = requests.get("http://%s/synchronize"%self.host)
         logging.debug("resp: %s"% r.text)
-        resp = json.loads(r.text)
+        resp = json.loads(r.text.decode('utf-8'))
         return resp
 
     def update(self):
         r = requests.post("http://%s/update"%self.host)
         logging.debug(r.text)
-        resp = json.loads(r.text)
+        resp = json.loads(r.text.decode('utf-8'))
         return resp
 
     def synchronize_locker(self, identifier):
@@ -115,5 +120,5 @@ class Gateway:
     def update_locker(self, identifier):
         r = requests.post("http://%s/locker/update"%self.host, data={"identifier": identifier})
         logging.debug(r.text)
-        resp = json.loads(r.text)
+        resp = json.loads(r.text.decode('utf-8'))
         return resp
