@@ -52,14 +52,14 @@ class BasePlugin:
             while True:
                 try:
                     Message = self.messageQueue.get(block=True)
+                    self.messageQueue.task_done()
                     Domoticz.Debug("handleMessage: %d"%Message["last_log"])
-                    self.checkStatus()
-                    self.lastLog = Message["last_log"]
+                    if self.checkStatus():
+                        self.lastLog = Message["last_log"]
                 except Exception as err:
-                    Domoticz.Error("checkStatus error: "+str(err))
-                self.messageQueue.task_done()
+                    Domoticz.Error("checkStatus error: %s"%str(err))
         except Exception as err:
-            Domoticz.Error("handleMessage: "+str(err))
+            Domoticz.Error("handleMessage: %s"%str(err))
             self.messageQueue.task_done()
 
     def onStart(self):
@@ -75,7 +75,7 @@ class BasePlugin:
 
         # create the child devices if these do not exist yet
         if not 1 in Devices:
-            Domoticz.Device(Name="The Keys", Unit=1, TypeName="Selector Switch", Switchtype=19, Image=15, Used=1).Create()
+            Domoticz.Device(Name="The Keys", Unit=1, TypeName="Switch", Switchtype=19, Used=1).Create()
         self.messageThread.start()
 
 
@@ -88,7 +88,7 @@ class BasePlugin:
     def onCommand(self, Unit, Command, Level, Color):
         Domoticz.Log("onCommand called for Unit {}: Command '{}', Level: {}".format(Unit, Command, Level))
         Domoticz.Log("locker code: %s"%self.shareCode)
-        if Command == "On":
+        if Command == "Off":
             self.gateway.open(self.lockerId, self.shareCode.encode("ascii"))
             Devices[Unit].Update(nValue = 1, sValue = 'Locked')
         else:
@@ -97,7 +97,9 @@ class BasePlugin:
 
 
     def onHeartbeat(self):
+        #Domoticz.Log("onHeartbeat before search")
         resp = self.gateway.search()
+        #Domoticz.Log(str(resp))
         for d in resp["devices"]:
             if str(d["identifier"]) == self.lockerId:
                 if d["last_log"] != self.lastLog :
@@ -107,6 +109,9 @@ class BasePlugin:
                     Domoticz.Log("Found locker %s. RSSI: %d, battery: %d"%(d["identifier"], d["rssi"], d["battery"]))
                     #self.lastLog = d["last_log"]
                 break;
+        if not self.messageThread.isAlive:
+            self.messageThread = threading.Thread(name="QueueThread", target=BasePlugin.handleMessage, args=(self,))
+            self.messageThread.start()
         Domoticz.Log("onHeartbeat done.")
 
 
@@ -115,8 +120,11 @@ class BasePlugin:
         Domoticz.Log("Check status: %d"%resp["code"])
         if resp["code"] == 49:
             Devices[1].Update(nValue = 1, sValue = 'Locked')
+            return True
         elif resp["code"] == 50:
             Devices[1].Update(nValue = 0, sValue = 'Unlocked')
+            return True
+        return False
 
 
 global _plugin
@@ -138,7 +146,7 @@ def onCommand(Unit, Command, Level, Color):
     try:
         _plugin.onCommand(Unit, Command, Level, Color)
     except Exception as e:
-        Domoticz.Log("An error occurs", e)
+        Domoticz.Log("An error occurs:%s"%str(e))
 
 
 
@@ -147,7 +155,7 @@ def onHeartbeat():
     try:
         _plugin.onHeartbeat()
     except Exception as e:
-        Domoticz.Log("An error occurs", e)
+        Domoticz.Log("An error occurs:%s"%str(e))
 
 
 # Plugin utility functions ---------------------------------------------------

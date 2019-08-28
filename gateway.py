@@ -45,7 +45,7 @@ class Gateway:
         self.host = host
 
     def synchro_auto(self, enable):
-        r = urllib.request.urlopen(urllib.request.Request("http://%s/auto"%(self.host), urllib.parse.urlencode({"enable": enable}).encode("ascii")))
+        r = urllib.request.urlopen(urllib.request.Request("http://%s/auto"%(self.host), urllib.parse.urlencode({"enable": enable}).encode("ascii")), timeout = 10)
         logging.debug("synchro auto enable: %s - %s"%(enable, r.read()))
 
     def open(self, identifier, code):
@@ -70,7 +70,7 @@ class Gateway:
         hash = base64.b64encode(hash)
         url = "http://%s/%s"%(self.host, type);
         Domoticz.Log("url: %s"%url)
-        r = urllib.request.urlopen(urllib.request.Request(url, urllib.parse.urlencode({"hash": hash, "identifier":identifier, "ts":ts}).encode("ascii")))
+        r = urllib.request.urlopen(urllib.request.Request(url, urllib.parse.urlencode({"hash": hash, "identifier":identifier, "ts":ts}).encode("ascii")), timeout = 10)
         if res_type == 'json':
             res = r.read()
             Domoticz.Log("res: %s"%res)
@@ -85,7 +85,7 @@ class Gateway:
     def search(self):
         url = "http://%s/lockers"%self.host
         req = urllib.request.Request(url)
-        r = urllib.request.urlopen(req)
+        r = urllib.request.urlopen(req, timeout = 10)
         try:
             resp = json.loads(r.read().decode('utf-8'))
         except:
