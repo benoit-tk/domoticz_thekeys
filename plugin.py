@@ -90,10 +90,10 @@ class BasePlugin:
         Domoticz.Log("locker code: %s"%self.shareCode)
         if Command == "Off":
             self.gateway.open(self.lockerId, self.shareCode.encode("ascii"))
-            Devices[Unit].Update(nValue = 1, sValue = 'Locked')
+            Devices[Unit].Update(nValue = 0, sValue = 'Unlocked')
         else:
             self.gateway.close(self.lockerId, self.shareCode.encode("ascii"))
-            Devices[Unit].Update(nValue = 0, sValue = 'Unlocked')
+            Devices[Unit].Update(nValue = 1, sValue = 'Locked')
 
 
     def onHeartbeat(self):
